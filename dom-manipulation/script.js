@@ -2,12 +2,12 @@ let quotes = [];
 
 const serverQuotesUrl = "https://jsonplaceholder.typicode.com/posts";
 
-// Save quotes to localStorage
+// Save to localStorage
 function saveQuotes() {
   localStorage.setItem("quotes", JSON.stringify(quotes));
 }
 
-// Load quotes from localStorage
+// Load from localStorage
 if (localStorage.getItem("quotes")) {
   quotes = JSON.parse(localStorage.getItem("quotes"));
 } else {
@@ -18,6 +18,7 @@ if (localStorage.getItem("quotes")) {
   saveQuotes();
 }
 
+// Show notification
 function showNotification(msg, color = "green") {
   const status = document.getElementById("syncStatus");
   status.innerText = msg;
@@ -25,7 +26,7 @@ function showNotification(msg, color = "green") {
   setTimeout(() => (status.innerText = ""), 4000);
 }
 
-// Fetch quotes from the mock server
+// Fetch from server
 async function fetchQuotesFromServer() {
   const res = await fetch(serverQuotesUrl);
   const data = await res.json();
@@ -35,7 +36,7 @@ async function fetchQuotesFromServer() {
   }));
 }
 
-// POST a new quote to server (mock)
+// Post to server
 async function postQuoteToServer(quote) {
   try {
     const res = await fetch(serverQuotesUrl, {
@@ -52,14 +53,11 @@ async function postQuoteToServer(quote) {
   }
 }
 
-// Sync quotes (with conflict resolution)
+// Sync quotes
 async function syncQuotes() {
   try {
     const serverQuotes = await fetchQuotesFromServer();
-
-    // Simple conflict resolution: Server wins (overwrites local)
     const newQuotes = [...serverQuotes, ...quotes.filter(q => q.category !== "Server")];
-
     quotes = newQuotes;
     saveQuotes();
     populateCategories();
@@ -88,7 +86,7 @@ function populateCategories() {
   }
 }
 
-// Show quote
+// Show random quote
 function showRandomQuote() {
   const selectedCategory = document.getElementById('categoryFilter').value;
   const filteredQuotes = selectedCategory === 'all'
@@ -137,48 +135,39 @@ function addQuote() {
   }
 }
 
-// Export quotes to JSON file
+// Export to JSON
 function exportToJsonFile() {
   const data = JSON.stringify(quotes, null, 2);
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "quotes.json";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "quotes.json";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-// Import quotes from uploaded JSON file
+// Import from JSON
 function importFromJsonFile(event) {
   const fileReader = new FileReader();
-  fileReader.onload = function(event) {
-    const importedQuotes = JSON.parse(event.target.result);
-    quotes.push(...importedQuotes);
-    saveQuotes();
-    populateCategories();
-    alert('Quotes imported successfully!');
+  fileReader.onload = function(e) {
+    try {
+      const importedQuotes = JSON.parse(e.target.result);
+      quotes.push(...importedQuotes);
+      saveQuotes();
+      populateCategories();
+      showNotification("Quotes imported successfully!");
+    } catch (err) {
+      alert("Invalid JSON file.");
+    }
   };
   fileReader.readAsText(event.target.files[0]);
 }
 
-// Initialize on load
+// Initialize
 window.onload = () => {
   populateCategories();
   showRandomQuote();
-
-  // Show last viewed quote if exists
-  const lastQuote = sessionStorage.getItem('lastQuote');
-  if (lastQuote) {
-    const quote = JSON.parse(lastQuote);
-    document.getElementById('quoteDisplay').innerHTML = `
-      <p>"${quote.text}"</p>
-      <p><em>Category: ${quote.category}</em></p>
-    `;
-  }
-
-  // Start periodic sync with server every 30 seconds
   syncQuotes();
   setInterval(syncQuotes, 30000);
 };
